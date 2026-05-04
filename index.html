@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DocuHub | KSM専用</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 修正点1: ライブラリを直接読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* デザイン・アニメーションは元のスタイルを継承 */
+        /* 既存のスタイルを完全維持 */
         .bg-gradient-custom { background: radial-gradient(circle at top left, #38bdf8, #0f172a); }
         .glass-ui { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -44,7 +43,7 @@
 </head>
 <body class="bg-[#F8FAFC] min-h-screen overflow-hidden">
 
-    <!-- 1. ログイン画面 -->
+    <!-- 1. ログイン画面（メール認証方式に修正） -->
     <div id="page-login" class="page active items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-5xl h-[600px] flex overflow-hidden shadow-2xl rounded-[40px] bg-white text-slate-800">
             <div class="hidden md:flex md:w-1/2 bg-gradient-custom relative p-12 flex-col justify-between overflow-hidden text-white">
@@ -52,15 +51,23 @@
                 <div class="absolute bottom-[-20px] right-[-20px] w-72 h-96 bg-white/10 rounded-[40px] rotate-12 flex items-center justify-center text-white/10 text-9xl font-bold backdrop-blur-sm">CLOUD</div>
             </div>
             <div class="w-full md:w-1/2 flex flex-col justify-center px-12 lg:px-20">
-                <div class="mb-10"><h2 class="text-3xl font-extrabold mb-2">ログイン</h2><p class="text-slate-500 font-medium">すべてのデバイスでPDFを同期</p></div>
-                <button id="btn-google-login" class="flex items-center justify-center w-full py-4 border border-slate-200 rounded-[22px] transition-all hover:bg-slate-50 hover:shadow-lg active:scale-95">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-6 h-6 mr-3"><span class="font-bold">Googleアカウントで開始</span>
-                </button>
+                <div class="mb-10"><h2 class="text-3xl font-extrabold mb-2">ログイン</h2><p class="text-slate-500 font-medium">メールアドレスで開始</p></div>
+                
+                <div class="space-y-4">
+                    <input type="email" id="auth-email" placeholder="メールアドレス" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <input type="password" id="auth-password" placeholder="パスワード" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button id="btn-signin" class="flex-1 py-4 bg-blue-600 text-white rounded-[20px] font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all">ログイン</button>
+                        <button id="btn-signup" class="flex-1 py-4 border border-slate-200 text-slate-600 rounded-[20px] font-bold hover:bg-slate-50 active:scale-95 transition-all">新規登録</button>
+                    </div>
+                </div>
+                <p id="auth-error" class="mt-4 text-red-500 text-sm font-medium hidden text-center"></p>
             </div>
         </div>
     </div>
 
-    <!-- 2. 本棚画面 -->
+    <!-- 2. 本棚画面（変更なし） -->
     <div id="page-shelf" class="page flex-col w-full overflow-y-auto h-screen">
         <nav class="flex items-center justify-between px-10 py-6 bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
             <div class="flex items-center gap-4"><div class="w-10 h-10 bg-blue-600 rounded-[14px] flex items-center justify-center text-white font-bold shadow-lg">D</div><h1 class="text-xl font-black text-slate-800 tracking-tight">DocuHub</h1></div>
@@ -76,7 +83,7 @@
         </main>
     </div>
 
-    <!-- 3. ビューアー画面 -->
+    <!-- 3. ビューアー画面（変更なし） -->
     <div id="page-viewer" class="page flex-col h-screen overflow-hidden bg-[#F1F5F9]">
         <header class="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 z-50">
             <button id="btn-back" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-xl text-slate-600 font-bold">◀</button>
@@ -88,7 +95,6 @@
         </header>
 
         <main class="relative flex-1 overflow-hidden">
-            <!-- ツールバー -->
             <div id="floating-toolbar" class="glass-ui flex flex-col gap-2 p-2 rounded-[26px] shadow-2xl" style="position: absolute; top: 24px; left: 50%; transform: translateX(-50%); touch-action: none; z-index: 1000;">
                 <div class="flex items-center gap-2">
                     <div class="drag-handle p-3 text-slate-400"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-12a2 2 0 10.001 4.001A2 2 0 0013 2zm0 6a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z"></path></svg></div>
@@ -99,17 +105,12 @@
                     <button id="btn-clear-ink" class="p-3 text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2"></path></svg></button>
                 </div>
             </div>
-
             <div id="pen-options" class="popup-menu glass-ui p-4 rounded-[20px] shadow-2xl w-48 mt-3">
                 <input type="color" id="pen-color" value="#3b82f6" class="w-full h-8 rounded-lg cursor-pointer bg-transparent border-none">
                 <input type="range" id="pen-width" min="1" max="50" value="5" class="w-full mt-3">
             </div>
-
-            <div id="viewport-container">
-                <div id="canvas-list-wrapper"></div>
-            </div>
+            <div id="viewport-container"><div id="canvas-list-wrapper"></div></div>
         </main>
-        
         <footer class="h-14 bg-white border-t border-slate-200 flex items-center justify-between px-10 z-50">
             <span id="page-num-display" class="text-xs font-bold text-slate-400 italic font-mono">CLOUD READY</span>
             <div class="px-6 py-1 bg-slate-100 rounded-full"><span id="zoom-text" class="text-xs font-black text-slate-500 italic">ZOOM 100%</span></div>
@@ -117,13 +118,9 @@
     </div>
 
     <script>
-        // 修正点2: importをやめてグローバル変数から読み込み
         const { createClient } = supabase;
-        
-        // Supabase設定
         const SUPABASE_URL = 'https://ohphhsvetyourafrkbrg.supabase.co'
         const SUPABASE_KEY = 'sb_publishable_ulKHSwbx3g4h1C8vv4sD6A_92cW_DLX'
-        // 修正点3: 以降のコードで衝突しないようsupabaseClientに代入（またはsupabaseに統一）
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -134,19 +131,42 @@
             currentUser: null, currentDocId: null, strokeHistory: []
         };
 
-        // --- 認証 ---
-        document.getElementById('btn-google-login').onclick = () => supabaseClient.auth.signInWithOAuth({ 
-            provider: 'google',
-            options: {
-                redirectTo: window.location.origin + window.location.pathname
+        // --- 認証ロジック（修正点：メール認証） ---
+        const emailInput = document.getElementById('auth-email');
+        const passwordInput = document.getElementById('auth-password');
+        const errorText = document.getElementById('auth-error');
+
+        // ログイン実行
+        document.getElementById('btn-signin').onclick = async () => {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: emailInput.value,
+                password: passwordInput.value,
+            });
+            if (error) {
+                errorText.innerText = "エラー: " + error.message;
+                errorText.classList.remove('hidden');
             }
-        });
-        document.getElementById('btn-logout').onclick = async () => {
-            await supabaseClient.auth.signOut();
-            location.reload(); // ログアウト後に確実にリロード
         };
 
-        // 起動時と状態変化時の両方をチェック
+        // 新規登録実行
+        document.getElementById('btn-signup').onclick = async () => {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: emailInput.value,
+                password: passwordInput.value,
+            });
+            if (error) {
+                errorText.innerText = "エラー: " + error.message;
+                errorText.classList.remove('hidden');
+            } else {
+                alert("登録確認メールを確認するか、Supabaseの設定で自動承認されている場合はそのままログインしてください。");
+            }
+        };
+
+        document.getElementById('btn-logout').onclick = async () => {
+            await supabaseClient.auth.signOut();
+            location.reload();
+        };
+
         async function checkUser() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
@@ -157,11 +177,8 @@
                 showPage('login');
             }
         }
-
-        // ページ読み込み時に実行
         checkUser();
 
-        // 状態が変わったときも実行
         supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
                 state.currentUser = session.user;
@@ -173,12 +190,11 @@
             }
         });
 
-        // --- UI表示切り替え ---
+        // --- 以下、既存のPDF・描画ロジックを完全維持 ---
         const pages = { login: document.getElementById('page-login'), shelf: document.getElementById('page-shelf'), viewer: document.getElementById('page-viewer') };
         function showPage(n) { Object.values(pages).forEach(p => p.classList.remove('active')); pages[n].classList.add('active'); }
         document.getElementById('btn-back').onclick = () => { showPage('shelf'); loadLibrary(); };
 
-        // --- ライブラリ読み込み ---
         async function loadLibrary() {
             const { data } = await supabaseClient.from('documents').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('shelf-grid');
@@ -192,49 +208,38 @@
             });
         }
 
-        // --- PDFアップロード ---
         document.getElementById('file-upload').onchange = async (e) => {
             const file = e.target.files[0]; if(!file) return;
             const filePath = `${state.currentUser.id}/${Date.now()}_${file.name}`;
-            
             await supabaseClient.storage.from('pdfs').upload(filePath, file);
             await supabaseClient.from('documents').insert([{ user_id: state.currentUser.id, name: file.name, file_path: filePath }]);
             loadLibrary();
         };
 
-        // --- クラウドからPDFを開く ---
         async function openCloudFile(doc) {
             state.currentDocId = doc.id;
             const { data: { publicUrl } } = supabaseClient.storage.from('pdfs').getPublicUrl(doc.file_path);
-            
             document.getElementById('viewer-filename').innerText = doc.name;
             showPage('viewer');
             document.getElementById('canvas-list-wrapper').innerHTML = '';
-            
-            // 書き込みデータを取得
             const { data: drawData } = await supabaseClient.from('drawings').select('strokes').eq('id', doc.id).single();
             state.strokeHistory = drawData ? drawData.strokes : [];
-
             const loadingTask = pdfjsLib.getDocument(publicUrl);
             const pdf = await loadingTask.promise;
-            
             for(let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: 2.0 });
                 const pDiv = document.createElement('div');
                 pDiv.className = 'page-container';
                 pDiv.style.width = (viewport.width/2) + 'px'; pDiv.style.height = (viewport.height/2) + 'px';
-                
                 const canvas = document.createElement('canvas');
                 canvas.width = viewport.width; canvas.height = viewport.height;
                 canvas.style.width = "100%"; canvas.style.height = "100%";
-                
                 const dCanvas = document.createElement('canvas');
                 dCanvas.className = 'draw-canvas' + (state.uiMode !== 'pan' ? ' active-layer' : '');
                 dCanvas.id = `draw-page-${i}`;
                 dCanvas.width = viewport.width; dCanvas.height = viewport.height;
                 dCanvas.style.width = "100%"; dCanvas.style.height = "100%";
-                
                 pDiv.appendChild(canvas); pDiv.appendChild(dCanvas);
                 document.getElementById('canvas-list-wrapper').appendChild(pDiv);
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
@@ -244,50 +249,33 @@
             resetZoom();
         }
 
-        // --- 自動保存機能 ---
         async function autoSave() {
             document.getElementById('save-status').innerText = "Saving...";
-            await supabaseClient.from('drawings').upsert({
-                id: state.currentDocId,
-                strokes: state.strokeHistory,
-                updated_at: new Date()
-            });
+            await supabaseClient.from('drawings').upsert({ id: state.currentDocId, strokes: state.strokeHistory, updated_at: new Date() });
             document.getElementById('save-status').innerText = "Saved";
         }
 
-        // --- 描画ロジック ---
         function setupDrawing(canvas, pageNum) {
             const ctx = canvas.getContext('2d');
             let drawing = false;
             let currentStroke = null;
-
             canvas.onpointerdown = (e) => {
                 if (state.uiMode === 'pan' || state.evCache.length > 1) return;
                 drawing = true;
                 const p = getPos(e, canvas);
                 currentStroke = { page: pageNum, color: document.getElementById('pen-color').value, width: document.getElementById('pen-width').value * 2, points: [p], mode: state.uiMode };
-                
                 ctx.beginPath(); ctx.moveTo(p.x, p.y);
                 canvas.setPointerCapture(e.pointerId); e.stopPropagation();
             };
-
             canvas.onpointermove = (e) => {
                 if (!drawing) return;
                 const p = getPos(e, canvas);
                 currentStroke.points.push(p);
-                ctx.lineWidth = currentStroke.width;
-                ctx.lineCap = 'round'; ctx.strokeStyle = currentStroke.color;
+                ctx.lineWidth = currentStroke.width; ctx.lineCap = 'round'; ctx.strokeStyle = currentStroke.color;
                 ctx.globalCompositeOperation = currentStroke.mode === 'eraser' ? 'destination-out' : 'source-over';
                 ctx.lineTo(p.x, p.y); ctx.stroke();
             };
-
-            canvas.onpointerup = () => {
-                if (drawing) {
-                    state.strokeHistory.push(currentStroke);
-                    drawing = false;
-                    autoSave();
-                }
-            };
+            canvas.onpointerup = () => { if (drawing) { state.strokeHistory.push(currentStroke); drawing = false; autoSave(); } };
         }
 
         function redrawAll() {
@@ -295,62 +283,36 @@
                 const canvas = document.getElementById(`draw-page-${s.page}`);
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                ctx.beginPath();
-                ctx.lineWidth = s.width; ctx.strokeStyle = s.color;
-                ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.lineWidth = s.width; ctx.strokeStyle = s.color; ctx.lineCap = 'round';
                 ctx.globalCompositeOperation = s.mode === 'eraser' ? 'destination-out' : 'source-over';
                 s.points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
                 ctx.stroke();
             });
         }
 
-        // --- ビューアー操作（ズーム・移動） ---
         const listWrapper = document.getElementById('canvas-list-wrapper');
         const container = document.getElementById('viewport-container');
-
         function updateT() { 
             listWrapper.style.transform = `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`; 
             document.getElementById('zoom-text').innerText = `ZOOM ${Math.round(state.scale * 100)}%`; 
         }
-
-        function resetZoom() {
-            state.scale = 0.7;
-            state.offsetX = (container.offsetWidth - (listWrapper.offsetWidth * 0.7)) / 2;
-            state.offsetY = 60;
-            updateT();
-        }
-
-        container.addEventListener('pointerdown', (e) => {
-            state.evCache.push(e); state.lastX = e.clientX; state.lastY = e.clientY;
-            container.setPointerCapture(e.pointerId);
-        });
-
+        function resetZoom() { state.scale = 0.7; state.offsetX = (container.offsetWidth - (listWrapper.offsetWidth * 0.7)) / 2; state.offsetY = 60; updateT(); }
+        container.addEventListener('pointerdown', (e) => { state.evCache.push(e); state.lastX = e.clientX; state.lastY = e.clientY; container.setPointerCapture(e.pointerId); });
         container.addEventListener('pointermove', (e) => {
             const index = state.evCache.findIndex(ev => ev.pointerId === e.pointerId);
             if (index > -1) state.evCache[index] = e;
             if (state.evCache.length === 2) {
                 const curDiff = Math.hypot(state.evCache[0].clientX - state.evCache[1].clientX, state.evCache[0].clientY - state.evCache[1].clientY);
                 if (state.prevDiff > 0) state.scale *= (curDiff / state.prevDiff);
-                state.prevDiff = curDiff;
-                updateT();
+                state.prevDiff = curDiff; updateT();
             } else if (state.evCache.length === 1 && state.uiMode === 'pan') {
                 state.offsetX += e.clientX - state.lastX; state.offsetY += e.clientY - state.lastY;
-                state.lastX = e.clientX; state.lastY = e.clientY;
-                updateT();
+                state.lastX = e.clientX; state.lastY = e.clientY; updateT();
             }
         });
+        container.addEventListener('pointerup', (e) => { state.evCache = state.evCache.filter(ev => ev.pointerId !== e.pointerId); if (state.evCache.length < 2) state.prevDiff = -1; });
+        function getPos(e, canvas) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) }; }
 
-        container.addEventListener('pointerup', (e) => {
-            state.evCache = state.evCache.filter(ev => ev.pointerId !== e.pointerId);
-            if (state.evCache.length < 2) state.prevDiff = -1;
-        });
-
-        function getPos(e, canvas) {
-            const r = canvas.getBoundingClientRect();
-            return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
-        }
-
-        // ツール切り替えUI
         document.getElementById('tool-pan').onclick = () => { state.uiMode = 'pan'; updateToolUI(); };
         document.getElementById('tool-pen').onclick = () => { state.uiMode = 'pen'; updateToolUI(); };
         document.getElementById('tool-eraser').onclick = () => { state.uiMode = 'eraser'; updateToolUI(); };
@@ -361,21 +323,18 @@
                 autoSave();
             }
         };
-
         function updateToolUI() {
             const btns = { pan: 'tool-pan', pen: 'tool-pen', eraser: 'tool-eraser' };
             Object.keys(btns).forEach(k => document.getElementById(btns[k]).className = (state.uiMode === k ? "p-3 bg-blue-500 text-white rounded-[18px]" : "p-3 text-slate-600 hover:bg-slate-100 rounded-[18px]"));
             document.querySelectorAll('.draw-canvas').forEach(c => c.classList.toggle('active-layer', state.uiMode !== 'pan'));
         }
 
-        // ツールバーのドラッグ
         const toolbar = document.getElementById('floating-toolbar');
         const handle = toolbar.querySelector('.drag-handle');
         let isTBDragging = false, tbX, tbY;
         handle.onpointerdown = (e) => { isTBDragging = true; const r = toolbar.getBoundingClientRect(); tbX = e.clientX - r.left; tbY = e.clientY - r.top; handle.setPointerCapture(e.pointerId); e.stopPropagation(); };
         handle.onpointermove = (e) => { if (!isTBDragging) return; toolbar.style.left = (e.clientX - tbX) + 'px'; toolbar.style.top = (e.clientY - tbY) + 'px'; toolbar.style.transform = 'none'; toolbar.style.margin = '0'; };
         handle.onpointerup = () => isTBDragging = false;
-        
         document.getElementById('btn-print').onclick = () => window.print();
     </script>
 </body>
