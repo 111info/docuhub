@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DocuHub | Cloud Professional</title>
+    <title>DocuHub | KSM専用</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -46,7 +46,7 @@
     <div id="page-login" class="page active items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-5xl h-[600px] flex overflow-hidden shadow-2xl rounded-[40px] bg-white text-slate-800">
             <div class="hidden md:flex md:w-1/2 bg-gradient-custom relative p-12 flex-col justify-between overflow-hidden text-white">
-                <div><h1 class="text-4xl font-bold mb-4">DocuHub</h1><p class="text-blue-200">クラウド同期対応のプロフェッショナル閲覧体験</p></div>
+                <div><h1 class="text-4xl font-bold mb-4">DocuHub</h1><p class="text-blue-200">KSM社員専用</p></div>
                 <div class="absolute bottom-[-20px] right-[-20px] w-72 h-96 bg-white/10 rounded-[40px] rotate-12 flex items-center justify-center text-white/10 text-9xl font-bold backdrop-blur-sm">CLOUD</div>
             </div>
             <div class="w-full md:w-1/2 flex flex-col justify-center px-12 lg:px-20">
@@ -130,25 +130,44 @@
             currentUser: null, currentDocId: null, strokeHistory: []
         };
 
-        // --- 認証 ---
-   document.getElementById('btn-google-login').onclick = () => supabase.auth.signInWithOAuth({ 
+// --- 認証 ---
+document.getElementById('btn-google-login').onclick = () => supabase.auth.signInWithOAuth({ 
     provider: 'google',
     options: {
         redirectTo: window.location.origin + window.location.pathname
     }
 });
-        document.getElementById('btn-logout').onclick = () => supabase.auth.signOut();
-        
-        supabase.auth.onAuthStateChange((event, session) => {
-            if (session) {
-                state.currentUser = session.user;
-                showPage('shelf');
-                loadLibrary();
-            } else {
-                showPage('login');
-            }
-        });
+document.getElementById('btn-logout').onclick = async () => {
+    await supabase.auth.signOut();
+    location.reload(); // ログアウト後に確実にリロード
+};
 
+// 起動時と状態変化時の両方をチェック
+async function checkUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        state.currentUser = session.user;
+        showPage('shelf');
+        loadLibrary();
+    } else {
+        showPage('login');
+    }
+}
+
+// ページ読み込み時に実行
+checkUser();
+
+// 状態が変わったときも実行
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+        state.currentUser = session.user;
+        showPage('shelf');
+        loadLibrary();
+    }
+    if (event === 'SIGNED_OUT') {
+        showPage('login');
+    }
+});
         // --- UI表示切り替え ---
         const pages = { login: document.getElementById('page-login'), shelf: document.getElementById('page-shelf'), viewer: document.getElementById('page-viewer') };
         function showPage(n) { Object.values(pages).forEach(p => p.classList.remove('active')); pages[n].classList.add('active'); }
