@@ -131,7 +131,12 @@
         };
 
         // --- 認証 ---
-        document.getElementById('btn-google-login').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
+   document.getElementById('btn-google-login').onclick = () => supabase.auth.signInWithOAuth({ 
+    provider: 'google',
+    options: {
+        redirectTo: window.location.origin + window.location.pathname
+    }
+});
         document.getElementById('btn-logout').onclick = () => supabase.auth.signOut();
         
         supabase.auth.onAuthStateChange((event, session) => {
