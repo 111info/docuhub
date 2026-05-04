@@ -201,7 +201,7 @@
             });
         }
 
-        // --- 修正済みのPDFアップロード処理 ---
+        // --- PDFアップロード処理（ファイル名クリーニング版を適用） ---
         document.getElementById('file-upload').onchange = async (e) => {
             const file = e.target.files[0]; 
             if(!file) return;
@@ -212,19 +212,23 @@
             uploadBtn.disabled = true;
 
             try {
-                const filePath = `${state.currentUser.id}/${Date.now()}_${file.name}`;
+                // 【重要】エラーの原因になる日本語や記号を「_」に置き換え
+                const cleanFileName = file.name.replace(/[^\w\.]/g, '_'); 
+                const filePath = `${state.currentUser.id}/${Date.now()}_${cleanFileName}`;
                 
+                // Storageへアップロード
                 const { error: uploadError } = await supabaseClient.storage
                     .from('pdfs')
                     .upload(filePath, file);
                 
                 if (uploadError) throw uploadError;
 
+                // データベースへ情報を登録
                 const { error: dbError } = await supabaseClient
                     .from('documents')
                     .insert([{ 
                         user_id: state.currentUser.id, 
-                        name: file.name, 
+                        name: file.name, // 表示名は元の日本語名のままで保持
                         file_path: filePath 
                     }]);
 
