@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DocuHub | KSM専用</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 修正点1: ライブラリを直接読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -115,13 +116,15 @@
         </footer>
     </div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    <script>
+        // 修正点2: importをやめてグローバル変数から読み込み
+        const { createClient } = supabase;
         
         // Supabase設定
         const SUPABASE_URL = 'https://ohphhsvetyourafrkbrg.supabase.co'
         const SUPABASE_KEY = 'sb_publishable_ulKHSwbx3g4h1C8vv4sD6A_92cW_DLX'
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+        // 修正点3: 以降のコードで衝突しないようsupabaseClientに代入（またはsupabaseに統一）
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -131,44 +134,45 @@
             currentUser: null, currentDocId: null, strokeHistory: []
         };
 
-// --- 認証 ---
-document.getElementById('btn-google-login').onclick = () => supabase.auth.signInWithOAuth({ 
-    provider: 'google',
-    options: {
-        redirectTo: window.location.origin + window.location.pathname
-    }
-});
-document.getElementById('btn-logout').onclick = async () => {
-    await supabase.auth.signOut();
-    location.reload(); // ログアウト後に確実にリロード
-};
+        // --- 認証 ---
+        document.getElementById('btn-google-login').onclick = () => supabaseClient.auth.signInWithOAuth({ 
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + window.location.pathname
+            }
+        });
+        document.getElementById('btn-logout').onclick = async () => {
+            await supabaseClient.auth.signOut();
+            location.reload(); // ログアウト後に確実にリロード
+        };
 
-// 起動時と状態変化時の両方をチェック
-async function checkUser() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        state.currentUser = session.user;
-        showPage('shelf');
-        loadLibrary();
-    } else {
-        showPage('login');
-    }
-}
+        // 起動時と状態変化時の両方をチェック
+        async function checkUser() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                state.currentUser = session.user;
+                showPage('shelf');
+                loadLibrary();
+            } else {
+                showPage('login');
+            }
+        }
 
-// ページ読み込み時に実行
-checkUser();
+        // ページ読み込み時に実行
+        checkUser();
 
-// 状態が変わったときも実行
-supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-        state.currentUser = session.user;
-        showPage('shelf');
-        loadLibrary();
-    }
-    if (event === 'SIGNED_OUT') {
-        showPage('login');
-    }
-});
+        // 状態が変わったときも実行
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                state.currentUser = session.user;
+                showPage('shelf');
+                loadLibrary();
+            }
+            if (event === 'SIGNED_OUT') {
+                showPage('login');
+            }
+        });
+
         // --- UI表示切り替え ---
         const pages = { login: document.getElementById('page-login'), shelf: document.getElementById('page-shelf'), viewer: document.getElementById('page-viewer') };
         function showPage(n) { Object.values(pages).forEach(p => p.classList.remove('active')); pages[n].classList.add('active'); }
@@ -176,7 +180,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 
         // --- ライブラリ読み込み ---
         async function loadLibrary() {
-            const { data } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+            const { data } = await supabaseClient.from('documents').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('shelf-grid');
             grid.innerHTML = '';
             data?.forEach(doc => {
@@ -193,22 +197,22 @@ supabase.auth.onAuthStateChange((event, session) => {
             const file = e.target.files[0]; if(!file) return;
             const filePath = `${state.currentUser.id}/${Date.now()}_${file.name}`;
             
-            await supabase.storage.from('pdfs').upload(filePath, file);
-            await supabase.from('documents').insert([{ user_id: state.currentUser.id, name: file.name, file_path: filePath }]);
+            await supabaseClient.storage.from('pdfs').upload(filePath, file);
+            await supabaseClient.from('documents').insert([{ user_id: state.currentUser.id, name: file.name, file_path: filePath }]);
             loadLibrary();
         };
 
         // --- クラウドからPDFを開く ---
         async function openCloudFile(doc) {
             state.currentDocId = doc.id;
-            const { data: { publicUrl } } = supabase.storage.from('pdfs').getPublicUrl(doc.file_path);
+            const { data: { publicUrl } } = supabaseClient.storage.from('pdfs').getPublicUrl(doc.file_path);
             
             document.getElementById('viewer-filename').innerText = doc.name;
             showPage('viewer');
             document.getElementById('canvas-list-wrapper').innerHTML = '';
             
             // 書き込みデータを取得
-            const { data: drawData } = await supabase.from('drawings').select('strokes').eq('id', doc.id).single();
+            const { data: drawData } = await supabaseClient.from('drawings').select('strokes').eq('id', doc.id).single();
             state.strokeHistory = drawData ? drawData.strokes : [];
 
             const loadingTask = pdfjsLib.getDocument(publicUrl);
@@ -243,7 +247,7 @@ supabase.auth.onAuthStateChange((event, session) => {
         // --- 自動保存機能 ---
         async function autoSave() {
             document.getElementById('save-status').innerText = "Saving...";
-            await supabase.from('drawings').upsert({
+            await supabaseClient.from('drawings').upsert({
                 id: state.currentDocId,
                 strokes: state.strokeHistory,
                 updated_at: new Date()
