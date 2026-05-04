@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* 既存のスタイルを完全維持 */
         .bg-gradient-custom { background: radial-gradient(circle at top left, #38bdf8, #0f172a); }
         .glass-ui { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -43,7 +42,7 @@
 </head>
 <body class="bg-[#F8FAFC] min-h-screen overflow-hidden">
 
-    <!-- 1. ログイン画面（メール認証方式に修正） -->
+    <!-- 1. ログイン画面 -->
     <div id="page-login" class="page active items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-5xl h-[600px] flex overflow-hidden shadow-2xl rounded-[40px] bg-white text-slate-800">
             <div class="hidden md:flex md:w-1/2 bg-gradient-custom relative p-12 flex-col justify-between overflow-hidden text-white">
@@ -52,11 +51,9 @@
             </div>
             <div class="w-full md:w-1/2 flex flex-col justify-center px-12 lg:px-20">
                 <div class="mb-10"><h2 class="text-3xl font-extrabold mb-2">ログイン</h2><p class="text-slate-500 font-medium">メールアドレスで開始</p></div>
-                
                 <div class="space-y-4">
                     <input type="email" id="auth-email" placeholder="メールアドレス" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <input type="password" id="auth-password" placeholder="パスワード" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    
                     <div class="flex gap-2 pt-2">
                         <button id="btn-signin" class="flex-1 py-4 bg-blue-600 text-white rounded-[20px] font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all">ログイン</button>
                         <button id="btn-signup" class="flex-1 py-4 border border-slate-200 text-slate-600 rounded-[20px] font-bold hover:bg-slate-50 active:scale-95 transition-all">新規登録</button>
@@ -67,7 +64,7 @@
         </div>
     </div>
 
-    <!-- 2. 本棚画面（変更なし） -->
+    <!-- 2. 本棚画面 -->
     <div id="page-shelf" class="page flex-col w-full overflow-y-auto h-screen">
         <nav class="flex items-center justify-between px-10 py-6 bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
             <div class="flex items-center gap-4"><div class="w-10 h-10 bg-blue-600 rounded-[14px] flex items-center justify-center text-white font-bold shadow-lg">D</div><h1 class="text-xl font-black text-slate-800 tracking-tight">DocuHub</h1></div>
@@ -83,7 +80,7 @@
         </main>
     </div>
 
-    <!-- 3. ビューアー画面（変更なし） -->
+    <!-- 3. ビューアー画面 -->
     <div id="page-viewer" class="page flex-col h-screen overflow-hidden bg-[#F1F5F9]">
         <header class="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 z-50">
             <button id="btn-back" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-xl text-slate-600 font-bold">◀</button>
@@ -93,7 +90,6 @@
                 <button id="btn-print" class="px-5 py-2 bg-blue-600 text-white text-xs font-bold rounded-full hover:bg-blue-700 shadow-lg">印刷</button>
             </div>
         </header>
-
         <main class="relative flex-1 overflow-hidden">
             <div id="floating-toolbar" class="glass-ui flex flex-col gap-2 p-2 rounded-[26px] shadow-2xl" style="position: absolute; top: 24px; left: 50%; transform: translateX(-50%); touch-action: none; z-index: 1000;">
                 <div class="flex items-center gap-2">
@@ -119,9 +115,9 @@
 
     <script>
         const { createClient } = supabase;
-        const SUPABASE_URL = 'https://ohphhsvetyourafrkbrg.supabase.co'
-        const SUPABASE_KEY = 'sb_publishable_ulKHSwbx3g4h1C8vv4sD6A_92cW_DLX'
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+        const SUPABASE_URL = 'https://ohphhsvetyourafrkbrg.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ulKHSwbx3g4h1C8vv4sD6A_92cW_DLX';
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -131,12 +127,11 @@
             currentUser: null, currentDocId: null, strokeHistory: []
         };
 
-        // --- 認証ロジック（修正点：メール認証） ---
+        // --- 認証ロジック ---
         const emailInput = document.getElementById('auth-email');
         const passwordInput = document.getElementById('auth-password');
         const errorText = document.getElementById('auth-error');
 
-        // ログイン実行
         document.getElementById('btn-signin').onclick = async () => {
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: emailInput.value,
@@ -148,7 +143,6 @@
             }
         };
 
-        // 新規登録実行
         document.getElementById('btn-signup').onclick = async () => {
             const { data, error } = await supabaseClient.auth.signUp({
                 email: emailInput.value,
@@ -158,7 +152,7 @@
                 errorText.innerText = "エラー: " + error.message;
                 errorText.classList.remove('hidden');
             } else {
-                alert("登録確認メールを確認するか、Supabaseの設定で自動承認されている場合はそのままログインしてください。");
+                alert("登録確認メールを確認してください。");
             }
         };
 
@@ -190,7 +184,6 @@
             }
         });
 
-        // --- 以下、既存のPDF・描画ロジックを完全維持 ---
         const pages = { login: document.getElementById('page-login'), shelf: document.getElementById('page-shelf'), viewer: document.getElementById('page-viewer') };
         function showPage(n) { Object.values(pages).forEach(p => p.classList.remove('active')); pages[n].classList.add('active'); }
         document.getElementById('btn-back').onclick = () => { showPage('shelf'); loadLibrary(); };
@@ -208,12 +201,46 @@
             });
         }
 
+        // --- 修正済みのPDFアップロード処理 ---
         document.getElementById('file-upload').onchange = async (e) => {
-            const file = e.target.files[0]; if(!file) return;
-            const filePath = `${state.currentUser.id}/${Date.now()}_${file.name}`;
-            await supabaseClient.storage.from('pdfs').upload(filePath, file);
-            await supabaseClient.from('documents').insert([{ user_id: state.currentUser.id, name: file.name, file_path: filePath }]);
-            loadLibrary();
+            const file = e.target.files[0]; 
+            if(!file) return;
+
+            const uploadBtn = document.querySelector("button[onclick*='file-upload']");
+            const originalText = uploadBtn.innerText;
+            uploadBtn.innerText = "アップロード中...";
+            uploadBtn.disabled = true;
+
+            try {
+                const filePath = `${state.currentUser.id}/${Date.now()}_${file.name}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('pdfs')
+                    .upload(filePath, file);
+                
+                if (uploadError) throw uploadError;
+
+                const { error: dbError } = await supabaseClient
+                    .from('documents')
+                    .insert([{ 
+                        user_id: state.currentUser.id, 
+                        name: file.name, 
+                        file_path: filePath 
+                    }]);
+
+                if (dbError) throw dbError;
+
+                await loadLibrary();
+                alert("クラウドに保存しました！");
+
+            } catch (err) {
+                console.error("Upload Error:", err);
+                alert("アップロード失敗: " + (err.message || "設定を確認してください"));
+            } finally {
+                uploadBtn.innerText = originalText;
+                uploadBtn.disabled = false;
+                e.target.value = '';
+            }
         };
 
         async function openCloudFile(doc) {
