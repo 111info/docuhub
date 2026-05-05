@@ -124,7 +124,7 @@
         let state = { 
             scale: 0.7, uiMode: 'pan', offsetX: 0, offsetY: 0, 
             evCache: [], prevDiff: -1, lastX: 0, lastY: 0,
-            currentUser: null, currentDocId: null, strokeHistory: []
+            currentUser: null, currentDocId: null, strokeHistory: [], currentPdfUrl: ''
         };
 
         // --- 認証ロジック ---
@@ -201,7 +201,7 @@
             });
         }
 
-        // --- PDFアップロード処理（ファイル名クリーニング版を適用） ---
+        // --- PDFアップロード処理 ---
         document.getElementById('file-upload').onchange = async (e) => {
             const file = e.target.files[0]; 
             if(!file) return;
@@ -212,23 +212,20 @@
             uploadBtn.disabled = true;
 
             try {
-                // 【重要】エラーの原因になる日本語や記号を「_」に置き換え
                 const cleanFileName = file.name.replace(/[^\w\.]/g, '_'); 
                 const filePath = `${state.currentUser.id}/${Date.now()}_${cleanFileName}`;
                 
-                // Storageへアップロード
                 const { error: uploadError } = await supabaseClient.storage
                     .from('pdfs')
                     .upload(filePath, file);
                 
                 if (uploadError) throw uploadError;
 
-                // データベースへ情報を登録
                 const { error: dbError } = await supabaseClient
                     .from('documents')
                     .insert([{ 
                         user_id: state.currentUser.id, 
-                        name: file.name, // 表示名は元の日本語名のままで保持
+                        name: file.name, 
                         file_path: filePath 
                     }]);
 
@@ -250,11 +247,15 @@
         async function openCloudFile(doc) {
             state.currentDocId = doc.id;
             const { data: { publicUrl } } = supabaseClient.storage.from('pdfs').getPublicUrl(doc.file_path);
+            state.currentPdfUrl = publicUrl;
             document.getElementById('viewer-filename').innerText = doc.name;
             showPage('viewer');
             document.getElementById('canvas-list-wrapper').innerHTML = '';
+            
+            // クラウドから描画データを取得
             const { data: drawData } = await supabaseClient.from('drawings').select('strokes').eq('id', doc.id).single();
-            state.strokeHistory = drawData ? drawData.strokes : [];
+            state.strokeHistory = drawData ? (drawData.strokes || []) : [];
+
             const loadingTask = pdfjsLib.getDocument(publicUrl);
             const pdf = await loadingTask.promise;
             for(let i = 1; i <= pdf.numPages; i++) {
@@ -280,10 +281,21 @@
             resetZoom();
         }
 
+        // --- クラウド保存（upsert修正） ---
         async function autoSave() {
             document.getElementById('save-status').innerText = "Saving...";
-            await supabaseClient.from('drawings').upsert({ id: state.currentDocId, strokes: state.strokeHistory, updated_at: new Date() });
-            document.getElementById('save-status').innerText = "Saved";
+            const { error } = await supabaseClient.from('drawings').upsert({ 
+                id: state.currentDocId, 
+                strokes: state.strokeHistory, 
+                updated_at: new Date() 
+            }, { onConflict: 'id' });
+            
+            if(error) {
+                console.error("Save error:", error);
+                document.getElementById('save-status').innerText = "Error";
+            } else {
+                document.getElementById('save-status').innerText = "Saved";
+            }
         }
 
         function setupDrawing(canvas, pageNum) {
@@ -310,6 +322,7 @@
         }
 
         function redrawAll() {
+            document.querySelectorAll('.draw-canvas').forEach(c => c.getContext('2d').clearRect(0,0,c.width,c.height));
             state.strokeHistory.forEach(s => {
                 const canvas = document.getElementById(`draw-page-${s.page}`);
                 if (!canvas) return;
@@ -344,9 +357,30 @@
         container.addEventListener('pointerup', (e) => { state.evCache = state.evCache.filter(ev => ev.pointerId !== e.pointerId); if (state.evCache.length < 2) state.prevDiff = -1; });
         function getPos(e, canvas) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) }; }
 
-        document.getElementById('tool-pan').onclick = () => { state.uiMode = 'pan'; updateToolUI(); };
-        document.getElementById('tool-pen').onclick = () => { state.uiMode = 'pen'; updateToolUI(); };
-        document.getElementById('tool-eraser').onclick = () => { state.uiMode = 'eraser'; updateToolUI(); };
+        // --- ツール操作 (消しゴム2回タップ対応) ---
+        function setTool(mode) {
+            const options = document.getElementById('pen-options');
+            const colorInput = document.getElementById('pen-color');
+            
+            if (state.uiMode === mode) {
+                // 2回同じボタンを押したとき、その真下にメニューを表示
+                const btnRect = document.getElementById(`tool-${mode}`).getBoundingClientRect();
+                options.style.left = (btnRect.left + btnRect.width/2) + 'px';
+                options.style.top = (btnRect.bottom + 10) + 'px';
+                options.classList.toggle('show');
+                // 消しゴムのときは色選択を非表示
+                colorInput.style.display = (mode === 'eraser') ? 'none' : 'block';
+            } else {
+                state.uiMode = mode;
+                options.classList.remove('show');
+                updateToolUI();
+            }
+        }
+
+        document.getElementById('tool-pan').onclick = () => { state.uiMode = 'pan'; document.getElementById('pen-options').classList.remove('show'); updateToolUI(); };
+        document.getElementById('tool-pen').onclick = () => setTool('pen');
+        document.getElementById('tool-eraser').onclick = () => setTool('eraser');
+        
         document.getElementById('btn-clear-ink').onclick = () => {
             if(confirm("全消去しますか？")) {
                 state.strokeHistory = [];
@@ -366,7 +400,11 @@
         handle.onpointerdown = (e) => { isTBDragging = true; const r = toolbar.getBoundingClientRect(); tbX = e.clientX - r.left; tbY = e.clientY - r.top; handle.setPointerCapture(e.pointerId); e.stopPropagation(); };
         handle.onpointermove = (e) => { if (!isTBDragging) return; toolbar.style.left = (e.clientX - tbX) + 'px'; toolbar.style.top = (e.clientY - tbY) + 'px'; toolbar.style.transform = 'none'; toolbar.style.margin = '0'; };
         handle.onpointerup = () => isTBDragging = false;
-        document.getElementById('btn-print').onclick = () => window.print();
+
+        // --- 印刷ボタン修正 (PDFを別窓で開く) ---
+        document.getElementById('btn-print').onclick = () => {
+            if (state.currentPdfUrl) window.open(state.currentPdfUrl, '_blank');
+        };
     </script>
 </body>
 </html>
